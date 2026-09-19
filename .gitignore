@@ -8,3 +8,4 @@ ENV/
 .idea/
 .vscode/
 *.log
+.firebase/

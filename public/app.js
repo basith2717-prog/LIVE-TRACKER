@@ -1,6 +1,28 @@
-/* ==========================================================================
-   CIVICCARE LIVE TRACKING - HYBRID CLIENT & SIMULATION ENGINE FOR FIREBASE
-   ========================================================================== */
+// Firebase Configuration for live-tracker-c6dc1
+const firebaseConfig = {
+    apiKey: "AIzaSyAbPFjkvL7Be77nli4Ynb8YRJYQKzgTn5A",
+    authDomain: "live-tracker-c6dc1.firebaseapp.com",
+    projectId: "live-tracker-c6dc1",
+    storageBucket: "live-tracker-c6dc1.firebasestorage.app",
+    messagingSenderId: "344866134033",
+    appId: "1:344866134033:web:90138343d234711c4779b0",
+    measurementId: "G-RL5RTHZCY4"
+};
+
+// Initialize Firebase App & Analytics if available
+let firebaseApp = null;
+let firebaseAnalytics = null;
+if (typeof firebase !== 'undefined') {
+    try {
+        firebaseApp = firebase.initializeApp(firebaseConfig);
+        if (typeof firebase.analytics === 'function') {
+            firebaseAnalytics = firebase.analytics();
+        }
+        console.log("Firebase initialized successfully with project:", firebaseConfig.projectId);
+    } catch (e) {
+        console.warn("Firebase initialization note:", e);
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // Application State Variables
@@ -246,9 +268,8 @@ document.addEventListener('DOMContentLoaded', () => {
             zoomControl: false
         });
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-            subdomains: 'abcd',
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             maxZoom: 19
         }).addTo(map);
 
