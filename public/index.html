@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivicCare // Public Complaint Live Tracking System</title>
+    
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Top Operations Bar -->
+        <header class="top-bar">
+            <div class="brand">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-building-shield pulse-icon"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>CIVICCARE <span class="badge-tag">LIVE HUD</span></h1>
+                    <p class="subtitle">REAL-TIME PUBLIC COMPLAINT DISPATCH & SERVICE TRACKING</p>
+                </div>
+            </div>
+
+            <div class="quick-stats-bar">
+                <div class="stat-pill">
+                    <span class="stat-label">TOTAL ISSUES</span>
+                    <span class="stat-value" id="stat-total-complaints">0</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-label">PENDING</span>
+                    <span class="stat-value text-warning" id="stat-pending-issues">0</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-label">IN PROGRESS</span>
+                    <span class="stat-value text-accent" id="stat-inprogress-issues">0</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-label">RESOLVED</span>
+                    <span class="stat-value text-success" id="stat-resolved-issues">0</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-label">SATISFACTION</span>
+                    <span class="stat-value text-success" id="stat-satisfaction">100%</span>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <div class="connection-status" id="connection-status">
+                    <span class="status-dot connected"></span>
+                    <span class="status-text">LIVE STREAM</span>
+                </div>
+                <div class="clock-display" id="utc-clock">00:00:00 UTC</div>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Viewport -->
+        <main class="dashboard-grid">
+            
+            <!-- Left Sidebar: Complaints Registry -->
+            <aside class="sidebar complaints-sidebar">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-circle-exclamation"></i> Public Complaints <span class="count-badge" id="complaints-count">0</span></h2>
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="complaint-search" placeholder="Track Complaint ID, name, or details...">
+                    </div>
+                </div>
+
+                <div class="filter-chips">
+                    <button class="chip active" data-filter="all">All Types</button>
+                    <button class="chip" data-filter="pothole">Potholes</button>
+                    <button class="chip" data-filter="sanitation">Sanitation</button>
+                    <button class="chip" data-filter="lighting">Lighting</button>
+                    <button class="chip" data-filter="water">Water</button>
+                    <button class="chip" data-filter="parking">Parking</button>
+                </div>
+
+                <div class="vehicle-list" id="complaints-list">
+                    <!-- Dynamic Complaint Cards Injected by JS -->
+                </div>
+            </aside>
+
+            <!-- Center Main Content: Interactive Map & HUD -->
+            <section class="main-viewport">
+                
+                <!-- Floating Map Toolbar -->
+                <div class="map-toolbar">
+                    <div class="toolbar-group">
+                        <button class="tool-btn" id="btn-pause-sim" title="Pause / Resume Dispatch Sim">
+                            <i class="fa-solid fa-pause"></i> <span id="pause-btn-text">Pause</span>
+                        </button>
+                        <div class="speed-control">
+                            <i class="fa-solid fa-gauge-high"></i>
+                            <span class="speed-val" id="speed-multiplier-label">1.0x</span>
+                            <input type="range" id="sim-speed-slider" min="0.5" max="10" step="0.5" value="1.0">
+                        </div>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <button class="tool-btn" id="btn-report-mode" title="Click on map to report a public complaint">
+                            <i class="fa-solid fa-map-pin"></i> <span>Report Incident</span>
+                        </button>
+                        <button class="tool-btn" id="btn-toggle-geofences">
+                            <i class="fa-solid fa-shield-halved"></i> <span>Toggle Zones</span>
+                        </button>
+                        <button class="tool-btn danger-btn" id="btn-reset-sim" title="Reset system state to defaults">
+                            <i class="fa-solid fa-rotate-left"></i> <span>Reset System</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Interactive Leaflet Map -->
+                <div id="map"></div>
+
+                <!-- Bottom Telemetry HUD Overlay for Selected Complaint -->
+                <div class="telemetry-hud hidden" id="telemetry-hud">
+                    <button class="close-hud-btn" id="btn-close-hud"><i class="fa-solid fa-xmark"></i></button>
+                    
+                    <div class="hud-main-info">
+                        <div class="hud-vehicle-title">
+                            <div class="hud-icon" id="hud-type-icon"><i class="fa-solid fa-circle-exclamation"></i></div>
+                            <div>
+                                <h3 id="hud-name">Select a Complaint to Track</h3>
+                                <div class="hud-meta">
+                                    <span id="hud-id">CP-XXXX</span> • 
+                                    <span id="hud-reporter">Reporter</span> • 
+                                    <span id="hud-created">Created at</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="hud-gauges">
+                            <div class="hud-gauge">
+                                <div class="hud-gauge-value text-accent" id="hud-category">N/A</div>
+                                <div class="hud-gauge-unit">CATEGORY</div>
+                            </div>
+                            <div class="hud-gauge">
+                                <div class="hud-gauge-value" id="hud-urgency">N/A</div>
+                                <div class="hud-gauge-unit">URGENCY</div>
+                            </div>
+                            <div class="hud-gauge">
+                                <div class="hud-gauge-value" id="hud-status">N/A</div>
+                                <div class="hud-gauge-unit">STATUS</div>
+                            </div>
+                            <div class="hud-gauge">
+                                <div class="hud-gauge-value text-success" id="hud-assigned-crew">None</div>
+                                <div class="hud-gauge-unit">RESPONDING UNIT</div>
+                            </div>
+                        </div>
+
+                        <div class="hud-actions">
+                            <button class="btn btn-primary" id="hud-btn-center"><i class="fa-solid fa-bullseye"></i> Center Map</button>
+                        </div>
+                    </div>
+
+                    <!-- Complaint Timeline History -->
+                    <div class="hud-timeline-container">
+                        <div class="timeline-header"><i class="fa-solid fa-clock-rotate-left"></i> Incident Timeline Logs</div>
+                        <div class="timeline-log-list" id="hud-timeline-list">
+                            <!-- Dynamic logs in selected complaint -->
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Right Sidebar: Crews & Activity Stream -->
+            <aside class="sidebar crew-sidebar">
+                
+                <!-- Municipal Service Crews Panel -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <h2><i class="fa-solid fa-helmet-safety"></i> Service Crews</h2>
+                    </div>
+                    <div class="crew-list-container" id="crew-list">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Real-Time Activity Log Feed -->
+                <div class="panel-section flex-grow">
+                    <div class="panel-header">
+                        <h2><i class="fa-solid fa-terminal"></i> Operational Logs</h2>
+                        <button class="btn-text" id="btn-clear-logs">Clear</button>
+                    </div>
+                    <div class="log-stream" id="log-stream">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+            </aside>
+
+        </main>
+
+    </div>
+
+    <!-- Submit Complaint Modal -->
+    <div class="modal-overlay hidden" id="report-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-file-invoice text-accent"></i> Submit New Public Complaint</h3>
+                <button class="close-modal-btn" id="close-report-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-subtitle">Specify incident details below. Maintenance crews will be auto-dispatched.</p>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Latitude</label>
+                        <input type="text" id="report-lat" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Longitude</label>
+                        <input type="text" id="report-lng" class="form-control" readonly>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Complaint Title</label>
+                    <input type="text" id="report-title" class="form-control" placeholder="e.g., Deep pothole in crosswalk">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="report-category" class="form-control">
+                            <option value="pothole">Pothole Repair</option>
+                            <option value="sanitation">Sanitation / Overflowing Bin</option>
+                            <option value="lighting">Burnt Out Streetlight</option>
+                            <option value="water">Water Main / Sidewalk Leak</option>
+                            <option value="parking">Illegal Parking / Blocked Access</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Urgency Level</label>
+                        <select id="report-urgency" class="form-control">
+                            <option value="LOW">Low (Routine)</option>
+                            <option value="MEDIUM" selected>Medium (Standard)</option>
+                            <option value="HIGH">High (Urgent)</option>
+                            <option value="CRITICAL">Critical (Immediate Safety Risk)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Reporter Name</label>
+                    <input type="text" id="report-reporter" class="form-control" placeholder="Your name (optional)" value="Anonymous Citizen">
+                </div>
+                
+                <div class="form-group">
+                    <label>Description & Landmarks</label>
+                    <textarea id="report-description" class="form-control" placeholder="Provide additional details or landmarks to help the crew locate the issue..." rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-cancel-report">Cancel</button>
+                <button class="btn btn-primary" id="btn-submit-report"><i class="fa-solid fa-paper-plane"></i> File Complaint</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- Custom Application JS -->
+    <script src="./app.js"></script>
+</body>
+</html>
