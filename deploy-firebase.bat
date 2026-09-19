@@ -4,12 +4,12 @@ echo        CIVICCARE LIVE TRACKER - FIREBASE DEPLOYMENT
 echo ========================================================
 echo.
 echo Step 1: Checking Firebase Authentication...
-call npx.cmd -y firebase-tools login
+call firebase.cmd login
 echo.
 echo Step 2: Deploying to Firebase Hosting...
-call npx.cmd -y firebase-tools deploy --only hosting
+call firebase.cmd deploy --only hosting
 echo.
 echo ========================================================
-echo Deployment finished! Check the live URL above.
+echo Deployment finished! Check your live domain above.
 echo ========================================================
 pause
